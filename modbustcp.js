@@ -36,7 +36,7 @@ module.exports = function (RED) {
     var RED = require(process.env.NODE_RED_HOME + "/red/red");
 
     DEBUG && log("loading modbustcpmaster.js for node-red");
-    var modbus = require('jsmodbus');
+    var modbus = require('modbus.js');
 
     /**
      * ====== ModbusTCP-CONTROLLER ===========
