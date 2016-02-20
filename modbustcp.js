@@ -16,12 +16,12 @@
 
 /**
  NodeRed node with support for MODBUS TCP based on jsmodbus.
-**/
+ **/
 function timestamp() {
     return new Date().
-        toISOString().
-        replace(/T/, ' ').      // replace T with a space
-        replace(/\..+/, '')
+    toISOString().
+    replace(/T/, ' ').      // replace T with a space
+    replace(/\..+/, '')
 }
 function log(msg, args) {
     if (args)
@@ -30,21 +30,21 @@ function log(msg, args) {
         console.log(timestamp() + ': ' + msg);
 }
 
+var DEBUG = false;
 
 module.exports = function (RED) {
-    var RED = require(process.env.NODE_RED_HOME+"/red/red");
+    var RED = require(process.env.NODE_RED_HOME + "/red/red");
 
-    log("loading modbustcpmaster.js for node-red");
+    DEBUG && log("loading modbustcpmaster.js for node-red");
     var modbus = require('jsmodbus');
 
-        /**
+    /**
      * ====== ModbusTCP-CONTROLLER ===========
      * Holds configuration for modbustcpmaster host+port,
      * initializes new modbustcpmaster connections
      * =======================================
      */
     function ModbusTCPControllerNode(config) {
-        //log("new ModbusTCPControllerNode, config: %j", config);
         RED.nodes.createNode(this, config);
         this.host = config.host;
         this.port = config.port;
@@ -52,26 +52,26 @@ module.exports = function (RED) {
         this.modbusconn = null;
         var node = this;
 
-         /**
+        /**
          * Initialize an modbustcp socket, calling the handler function
          * when successfully connected, passing it the modbustcp connection
          */
         this.initializeModbusTCPConnection = function (handler) {
             if (node.modbusconn) {
-                log('already connected to modbustcp slave at ' + config.host + ':' + config.port);
-                if (handler && (typeof handler === 'function')){
+                DEBUG && log('already connected to modbustcp slave at ' + config.host + ':' + config.port);
+                if (handler && (typeof handler === 'function')) {
                     handler(node.modbusconn);
                 }
                 return node.modbusconn;
             }
-            log('connecting to modbustcp slave at ' + config.host + ':' + config.port);
+            DEBUG && log('connecting to modbustcp slave at ' + config.host + ':' + config.port);
             node.modbusconn = null;
-            node.modbusconn = modbus.create(config.port, config.host, function(err){
+            node.modbusconn = modbus.create(config.port, config.host, function (err) {
                 if (err) {
-                    log('connecting to modbustcp slave at ' + config.host + ':' + config.port);
+                    DEBUG && log('connecting to modbustcp slave at ' + config.host + ':' + config.port);
                     return null;
-                } 
-                log('ModbusTCP: successfully connected to ' + config.host + ':' + config.port);
+                }
+                DEBUG && log('ModbusTCP: successfully connected to ' + config.host + ':' + config.port);
             });
             node.modbusconn.connect();
 
@@ -82,7 +82,7 @@ module.exports = function (RED) {
 
         /* ===== Node-Red events ===== */
         this.on("close", function () {
-            log('disconnecting from modbustcp slave at %s:%d', [config.host, config.port]);
+            DEBUG && log('disconnecting from modbustcp slave at %s:%d', [config.host, config.port]);
             node.modbusconn && node.modbusconn.disconnect && node.modbusconn.disconnect();
         });
     }
@@ -95,7 +95,6 @@ module.exports = function (RED) {
      * =======================================
      */
     function ModbusTCPOut(config) {
-        //log('new ModbusTCP-OUT, config: %j', config);
         RED.nodes.createNode(this, config);
         this.name = config.name;
         this.dataType = config.dataType;
@@ -104,29 +103,29 @@ module.exports = function (RED) {
         var node = this;
         /* ===== Node-Red events ===== */
         this.on("input", function (msg) {
-            log('modbustcp-out.onInput, msg=%j', msg);
+            DEBUG && log('modbustcp-out.onInput, msg=%j', msg);
             if (!(msg && msg.hasOwnProperty('payload'))) return;
-            
+
             if (msg.payload == null) {
-                log('modbustcp-out.onInput: illegal msg.payload!');
+                DEBUG && log('modbustcp-out.onInput: illegal msg.payload!');
                 return;
             }
 
             switch (node.dataType) {
                 case "Coil":
-                    this.ctrl.initializeModbusTCPConnection(function(connection){
+                    this.ctrl.initializeModbusTCPConnection(function (connection) {
                         connection.writeSingleCoil(+node.adr, +msg.payload);
                     })
                     break;
                 case "HoldingRegister":
-                    this.ctrl.initializeModbusTCPConnection(function(connection){
+                    this.ctrl.initializeModbusTCPConnection(function (connection) {
                         connection.writeSingleRegister(+node.adr, +msg.payload);
                     })
                     break;
             }
         });
 
-        this.on("close", function () {
+        DEBUG && this.on("close", function () {
             log('modbustcp-out.close');
         });
     }
@@ -135,7 +134,6 @@ module.exports = function (RED) {
     RED.nodes.registerType("modbustcp-out", ModbusTCPOut);
 
     function ModbusTCPIn(config) {
-        //log('new ModbusTCP-IN, config: %j', config);
         RED.nodes.createNode(this, config);
         this.name = config.name;
         this.dataType = config.dataType;
@@ -147,10 +145,10 @@ module.exports = function (RED) {
         /* ===== modbustcp events ===== */
         // initialize incoming modbustcp event socket
         // there's only one connection for modbustcp-in:
-        modbusTCPController.initializeModbusTCPConnection(function(connection){
+        modbusTCPController.initializeModbusTCPConnection(function (connection) {
 
-            node.receiveEvent = function(val){
-                log('modbustcp event: Data.' + node.dataType + '.' + node.adr + '=' + val);
+            node.receiveEvent = function (val) {
+                DEBUG && log('modbustcp event: Data.' + node.dataType + '.' + node.adr + '=' + val);
                 node.send({
                     topic: 'modbustcp:event',
                     payload: val
@@ -160,7 +158,7 @@ module.exports = function (RED) {
             node.connection = connection;
             node.connection.on('Data.' + node.dataType + '.' + node.adr, node.receiveEvent);
 
-            switch (node.dataType){
+            switch (node.dataType) {
                 case "Coil":
                     node.connection.addPollingCoils(+node.adr);
                     break;
@@ -179,7 +177,7 @@ module.exports = function (RED) {
         /* ===== Node-Red events ===== */
         this.on("close", function () {
             if (node.connection && node.receiveEvent)
-                node.connection.off('Data.' + node.dataType + '.' + node.adr, node.receiveEvent);
+                node.connection.removeListener('Data.' + node.dataType + '.' + node.adr, node.receiveEvent);
         });
 
     }
