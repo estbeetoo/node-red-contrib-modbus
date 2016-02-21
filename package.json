@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-modbus",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Node-RED nodes for communicating with a Modbus Tcp.",
   "repository": {
     "type": "git",
@@ -28,6 +28,6 @@
   "homepage": "https://github.com/estbeetoo/node-red-contrib-modbus#readme",
   "scripts": {},
   "dependencies": {
-    "jsmodbus": "https://github.com/estbeetoo/modbus.js.git"
+    "modbus.js": "*"
   }
 }
